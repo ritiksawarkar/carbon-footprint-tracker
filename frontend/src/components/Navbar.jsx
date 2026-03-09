@@ -1,15 +1,13 @@
 // Navbar.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
+  const [user, setUser] = useState(() => {
     const stored = localStorage.getItem("ecotrack_user");
-    if (stored) setUser(JSON.parse(stored));
-  }, []);
+    return stored ? JSON.parse(stored) : null;
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("ecotrack_token");
@@ -32,11 +30,21 @@ const Navbar = () => {
 
       {/* Nav links */}
       <div className="hidden md:flex gap-8 text-slate-700 font-medium">
-        <a href="#home" className="hover:text-green-600 transition">Home</a>
-        <a href="#how" className="hover:text-green-600 transition">How It Works</a>
-        <a href="#features" className="hover:text-green-600 transition">Features</a>
-        <a href="#leaderboard" className="hover:text-green-600 transition">Leaderboard</a>
-        <a href="#about" className="hover:text-green-600 transition">About</a>
+        <a href="#home" className="hover:text-green-600 transition">
+          Home
+        </a>
+        <a href="#how" className="hover:text-green-600 transition">
+          How It Works
+        </a>
+        <a href="#features" className="hover:text-green-600 transition">
+          Features
+        </a>
+        <a href="#leaderboard" className="hover:text-green-600 transition">
+          Leaderboard
+        </a>
+        <a href="#about" className="hover:text-green-600 transition">
+          About
+        </a>
       </div>
 
       {/* Right side — auth aware */}

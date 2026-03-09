@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import LandingPage from "./pages/LandingPage";
 import TrackPage from "./pages/TrackPage";
 import Dashboard from "./pages/Dashboard";
 import AuthPage from "./pages/AuthPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+import LeaderboardPage from "./pages/LeaderboardPage";
 import "./App.css";
 
 function App() {
@@ -28,10 +30,10 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
-
