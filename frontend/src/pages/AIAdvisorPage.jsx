@@ -3,7 +3,7 @@ import { Brain, Bot, Send, Sparkles, RotateCcw } from "lucide-react";
 import { getCarbonHistory } from "../services/carbonService";
 import { sendAIMessage } from "../services/aiService";
 
-const STARTER_PROMPTS = [
+const EXAMPLE_PROMPTS = [
   "What is my biggest carbon reduction opportunity this week?",
   "How can I improve my eco score by 10 points?",
   "Give me a low-effort home electricity action plan.",
@@ -16,31 +16,18 @@ const INITIAL_MESSAGE = {
     "I am your Eco AI Advisor. Ask for practical, personalized steps to lower emissions and improve your eco score.",
 };
 
-function MessageBubble({ type, content, insight }) {
+function MessageBubble({ type, content }) {
   const aiMessage = type === "ai";
 
   return (
     <div className={`flex ${aiMessage ? "justify-start" : "justify-end"}`}>
       <div
-        className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm shadow-sm ${aiMessage
-          ? "bg-emerald-50 text-emerald-900 rounded-bl-md"
-          : "bg-slate-100 text-slate-800 rounded-br-md"
+        className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm shadow-sm transition-all ${aiMessage
+          ? "rounded-bl-md border border-emerald-100 bg-emerald-50 text-emerald-900"
+          : "rounded-br-md border border-slate-200 bg-slate-100 text-slate-800"
           }`}
       >
-        <p>{content}</p>
-        {aiMessage && insight && (
-          <div className="mt-3 space-y-2 border-t border-emerald-100 pt-3">
-            <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
-              <span className="font-semibold text-slate-900">Suggestion:</span> {insight.suggestion}
-            </div>
-            <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
-              <span className="font-semibold text-slate-900">Impact:</span> {insight.impact}
-            </div>
-            <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
-              <span className="font-semibold text-slate-900">Tip:</span> {insight.tip}
-            </div>
-          </div>
-        )}
+        <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
       </div>
     </div>
   );
@@ -101,9 +88,20 @@ const AIAdvisorPage = () => {
     setError("");
 
     try {
+      const history = messages
+        .slice(-10)
+        .filter((item) => item.type === "user" || item.type === "ai")
+        .map((item) => ({
+          role: item.type === "ai" ? "assistant" : "user",
+          content: item.content,
+        }));
+
       const response = await sendAIMessage({
         message,
+        ecoScore: context.ecoScore,
+        co2: context.totalCO2,
         context,
+        history,
       });
 
       setMessages((prev) => [
@@ -111,7 +109,6 @@ const AIAdvisorPage = () => {
         {
           type: "ai",
           content: response.reply || "Here is a sustainability recommendation.",
-          insight: response.insight || null,
         },
       ]);
     } catch (err) {
@@ -147,7 +144,7 @@ const AIAdvisorPage = () => {
                 AI Climate Advisor
               </h1>
               <p className="text-sm text-slate-500 sm:text-base">
-                Personalized recommendations powered by your latest footprint data.
+                Ask anything about sustainability, footprint reduction, and eco improvement.
               </p>
             </div>
           </div>
@@ -214,7 +211,7 @@ const AIAdvisorPage = () => {
 
         <div className="border-t border-slate-200 px-4 pb-4 pt-3 sm:px-5">
           <div className="mb-3 flex flex-wrap gap-2">
-            {STARTER_PROMPTS.map((prompt) => (
+            {EXAMPLE_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
                 type="button"

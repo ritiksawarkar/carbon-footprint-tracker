@@ -1,193 +1,204 @@
-// Keyword-based AI chat for sustainability advice
 const CarbonResult = require("../models/CarbonResult");
 
-const RESPONSES = [
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const OPENAI_BASE_URL =
+  process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+
+const RESPONSE_STYLES = [
   {
-    keywords: [
-      "electric",
-      "power",
-      "energy",
-      "kwh",
-      "appliance",
-      "light",
-      "led",
-    ],
-    reply:
-      "Reducing electricity consumption is one of the most impactful ways to lower your carbon footprint. Start with lighting and standby devices:",
-    insight: {
-      suggestion: "Switch to LED lighting & smart plugs",
-      impact: "Reduce 8–12 kg CO₂ per month",
-      tip: "Unplug electronics when not in use — standby mode accounts for up to 10% of household electricity.",
-    },
+    name: "short-answer",
+    instruction:
+      "Use a concise response with 3-5 focused lines and one quick action to start today.",
   },
   {
-    keywords: [
-      "transport",
-      "car",
-      "drive",
-      "driving",
-      "commute",
-      "travel",
-      "petrol",
-      "diesel",
-      "bike",
-      "bicycle",
-    ],
-    reply:
-      "Transportation is often the largest contributor to personal carbon emissions. Here are high-impact steps:",
-    insight: {
-      suggestion: "Use public transport or cycle for short trips",
-      impact: "Reduce 20–40 kg CO₂ per month",
-      tip: "Switching even one car commute per week to cycling or public transit makes a measurable difference.",
-    },
+    name: "step-by-step-plan",
+    instruction:
+      "Use a numbered 4-step practical plan that can be started this week.",
   },
   {
-    keywords: ["waste", "recycl", "trash", "garbage", "landfill", "compost"],
-    reply:
-      "Good waste management significantly reduces methane emissions from landfills. Here's what you can do:",
-    insight: {
-      suggestion: "Start composting organic waste",
-      impact: "Reduce 5–8 kg CO₂ per month",
-      tip: "Composting diverts organic matter from landfills, which produce methane — 80x more potent than CO₂ over 20 years.",
-    },
+    name: "bullet-points",
+    instruction:
+      "Use crisp bullet points with action + expected benefit for each bullet.",
   },
   {
-    keywords: ["plastic", "bag", "bottle", "packaging", "single-use", "straw"],
-    reply:
-      "Reducing single-use plastics cuts both fossil fuel consumption and ocean pollution:",
-    insight: {
-      suggestion: "Carry a reusable bag and water bottle",
-      impact: "Reduce 3–6 kg CO₂ per month",
-      tip: "Single-use plastics require significant fossil fuels to produce. Reusables pay back their carbon cost within months.",
-    },
-  },
-  {
-    keywords: [
-      "food",
-      "diet",
-      "meat",
-      "beef",
-      "vegetarian",
-      "vegan",
-      "plant",
-      "eat",
-    ],
-    reply:
-      "Food choices have a surprisingly large impact on carbon footprint — especially red meat consumption:",
-    insight: {
-      suggestion: "Try Meatless Mondays to start reducing meat",
-      impact: "Reduce 15–30 kg CO₂ per month",
-      tip: "Beef production emits ~27 kg CO₂ per kg. Replacing one beef meal per week with legumes saves ~50 kg CO₂ annually.",
-    },
-  },
-  {
-    keywords: ["water", "shower", "bath", "tap", "leak", "irrigation"],
-    reply:
-      "Water heating is a significant energy expense — conserving hot water directly cuts CO₂ emissions:",
-    insight: {
-      suggestion: "Take shorter showers (under 5 minutes)",
-      impact: "Reduce 2–4 kg CO₂ per month",
-      tip: "A low-flow showerhead can cut water usage by 40% with no loss of pressure.",
-    },
-  },
-  {
-    keywords: [
-      "solar",
-      "renewable",
-      "green energy",
-      "wind",
-      "panel",
-      "photovoltaic",
-    ],
-    reply:
-      "Switching to renewable energy is one of the highest-impact changes you can make:",
-    insight: {
-      suggestion: "Install solar panels or switch to a green energy tariff",
-      impact: "Reduce 50–100 kg CO₂ per month",
-      tip: "Many utility providers offer green energy plans with little or no extra cost. Check yours today.",
-    },
-  },
-  {
-    keywords: [
-      "score",
-      "improve",
-      "better",
-      "higher",
-      "increase",
-      "boost",
-      "tips",
-      "advice",
-      "help",
-      "what can",
-      "how to",
-      "suggestion",
-    ],
-    reply:
-      "To improve your eco score, focus on your highest-impact category. Here's a reliable quick win:",
-    insight: {
-      suggestion: "Track and reduce daily transport emissions",
-      impact: "Increase eco score by 10–20 points",
-      tip: "Small consistent changes compound over time. Try walking or cycling for any trip under 3 km.",
-    },
-  },
-  {
-    keywords: ["air", "flight", "plane", "aviation", "fly"],
-    reply:
-      "Aviation has one of the highest per-km carbon costs. Here's how to offset or reduce its impact:",
-    insight: {
-      suggestion: "Prefer trains over short-haul flights",
-      impact: "A train emits ~90% less CO₂ than flying the same route",
-      tip: "For trips under 700 km, high-speed rail is typically faster door-to-door and far greener.",
-    },
-  },
-  {
-    keywords: ["shopping", "buy", "purchase", "fashion", "cloth", "consume"],
-    reply:
-      "Consumption habits — especially fast fashion — carry a hidden carbon cost:",
-    insight: {
-      suggestion: "Buy second-hand or choose quality over quantity",
-      impact: "Reduce 10–20 kg CO₂ per month",
-      tip: "Extending a garment's life by 9 months reduces its carbon, water, and waste footprint by 20–30%.",
-    },
+    name: "casual-explanation",
+    instruction:
+      "Use a conversational tone with clear explanation and realistic examples.",
   },
 ];
 
-const DEFAULT_RESPONSE = {
-  reply:
-    "I'm here to help you on your sustainability journey! Ask me about electricity, transport, waste, plastic, food, water, or ways to improve your eco score.",
-  insight: {
-    suggestion: "Start with one small change today",
-    impact: "Every action adds up over time",
-    tip: "Track your progress weekly using EcoTrack to see how your choices impact your carbon footprint.",
-  },
-};
+const INTRO_LINES = [
+  "Looking at your footprint pattern...",
+  "From your current sustainability data...",
+  "A practical improvement path for you...",
+  "Based on your weekly trend...",
+  "Here is a focused action plan for your profile...",
+];
 
-function getAIResponse(message, context = {}) {
-  const msg = message.toLowerCase();
+const TEMPERATURE_CHOICES = [0.72, 0.78, 0.84, 0.9];
 
-  // Build context-aware prefix based on eco score
-  let prefix = "";
-  const { ecoScore } = context;
-  if (typeof ecoScore === "number") {
-    if (ecoScore >= 70) {
-      prefix = `You're doing great with an eco score of ${ecoScore}! `;
-    } else if (ecoScore >= 40) {
-      prefix = `With your eco score of ${ecoScore}, there's room to improve. `;
-    } else {
-      prefix = `Your eco score of ${ecoScore} highlights high-impact areas to work on. `;
-    }
+function randomItem(list = []) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function randomTemperature() {
+  return randomItem(TEMPERATURE_CHOICES) ?? 0.8;
+}
+
+function buildFallbackReply(message, context = {}) {
+  const lower = String(message || "").toLowerCase();
+  const co2 = typeof context.totalCO2 === "number" ? context.totalCO2 : null;
+  const eco = typeof context.ecoScore === "number" ? context.ecoScore : null;
+
+  let focus = "transportation and electricity";
+  if (lower.includes("electric") || lower.includes("power"))
+    focus = "electricity";
+  if (lower.includes("waste") || lower.includes("recycle")) focus = "waste";
+  if (lower.includes("plastic")) focus = "plastic usage";
+  if (lower.includes("transport") || lower.includes("commute"))
+    focus = "transportation";
+
+  const introSeed = randomItem(INTRO_LINES) || "Here is a focused plan";
+  const intro =
+    co2 !== null && eco !== null
+      ? `${introSeed} Your current values are ${co2.toFixed(1)} kg/week and eco score ${eco}/100.`
+      : `${introSeed} Start by prioritizing ${focus}.`;
+
+  const fallbackMode = randomItem(["short", "steps", "bullets"]) || "steps";
+
+  if (fallbackMode === "short") {
+    return [
+      intro,
+      `Highest-impact focus: ${focus}.`,
+      "Do one repeatable action for 7 days and measure change at week end.",
+      "Then add one low-effort habit to compound progress.",
+    ].join("\n");
   }
 
-  for (const rule of RESPONSES) {
-    if (rule.keywords.some((kw) => msg.includes(kw))) {
-      return { reply: prefix + rule.reply, insight: rule.insight };
-    }
+  if (fallbackMode === "bullets") {
+    return [
+      intro,
+      "",
+      "- Prioritize one high-impact change in your main emission area.",
+      "- Keep the action easy enough to repeat daily for one week.",
+      "- Track CO2 and eco score change weekly to validate progress.",
+      "- Add one extra habit only after consistency is stable.",
+    ].join("\n");
   }
 
-  return {
-    reply: prefix + DEFAULT_RESPONSE.reply,
-    insight: DEFAULT_RESPONSE.insight,
-  };
+  return [
+    intro,
+    "",
+    "Try this practical 7-day plan:",
+    "1. Pick one high-impact change and repeat it daily.",
+    "2. Track the result at the end of the week.",
+    "3. Add one additional low-effort habit next week.",
+    "",
+    "Share your commute, electricity, and waste routine for a tighter personalized plan.",
+  ].join("\n");
+}
+
+function buildSystemPrompt(context = {}, dynamicStyle, introLine) {
+  const ecoScoreText =
+    typeof context.ecoScore === "number"
+      ? `${context.ecoScore}/100`
+      : "unknown";
+  const co2Text =
+    typeof context.totalCO2 === "number"
+      ? `${context.totalCO2.toFixed(1)} kg/week`
+      : "unknown";
+  const transportText = context.transportType || "unknown";
+
+  return [
+    "You are an intelligent AI sustainability advisor.",
+    "Your goal is to provide practical, personalized, and actionable guidance.",
+    "Never produce identical responses for different turns.",
+    "Vary structure and wording naturally between turns.",
+    "Prioritize high-impact actions first, then low-effort quick wins.",
+    "Identify likely biggest emission source from context and question.",
+    "Avoid generic motivational fluff and avoid unrealistic advice.",
+    "When useful, include estimated impact ranges.",
+    dynamicStyle?.instruction ||
+      "Use a concise but practical format with clear next actions.",
+    `Start your response with this opener: ${introLine || "Here is a focused recommendation."}`,
+    "",
+    "User context:",
+    `- CO2: ${co2Text}`,
+    `- Eco Score: ${ecoScoreText}`,
+    `- Main transport type: ${transportText}`,
+  ].join("\n");
+}
+
+async function callLLM({ message, context, history = [] }) {
+  if (!OPENAI_API_KEY) {
+    return {
+      reply:
+        "AI provider is not configured yet. Please set OPENAI_API_KEY in backend environment to enable dynamic AI responses.",
+      provider: "none",
+    };
+  }
+
+  const selectedStyle = randomItem(RESPONSE_STYLES) || RESPONSE_STYLES[0];
+  const introLine =
+    randomItem(INTRO_LINES) || "Here is a focused recommendation.";
+  const temperature = randomTemperature();
+
+  const messages = [
+    {
+      role: "system",
+      content: buildSystemPrompt(context, selectedStyle, introLine),
+    },
+    ...history.map((item) => ({
+      role: item.role === "assistant" ? "assistant" : "user",
+      content: item.content,
+    })),
+    { role: "user", content: message },
+  ];
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        temperature,
+        max_tokens: 450,
+        messages,
+      }),
+      signal: controller.signal,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      const detail = data?.error?.message || "LLM API request failed";
+      const err = new Error(detail);
+      err.llmStatus = response.status;
+      throw err;
+    }
+
+    const reply = data?.choices?.[0]?.message?.content?.trim();
+    if (!reply) {
+      throw new Error("LLM returned an empty response");
+    }
+
+    return {
+      reply,
+      provider: "openai",
+      model: OPENAI_MODEL,
+      style: selectedStyle.name,
+      temperature,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function enrichContextFromLatestResult(context = {}, userId) {
@@ -252,21 +263,70 @@ function resolveContextSource(requestContext = {}, enrichedContext = {}) {
 // @access Public (token optional; if valid, missing context is enriched from latest saved result)
 const chat = async (req, res) => {
   try {
-    const { message, context } = req.body;
+    const { message, context, ecoScore, co2, history = [] } = req.body;
 
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({ message: "Message is required." });
     }
 
-    const requestContext = context || {};
+    const requestContext = {
+      ...(context || {}),
+      ecoScore: typeof ecoScore === "number" ? ecoScore : context?.ecoScore,
+      totalCO2: typeof co2 === "number" ? co2 : context?.totalCO2,
+    };
+
     const enrichedContext = await enrichContextFromLatestResult(
       requestContext,
       req.user?._id,
     );
     const contextSource = resolveContextSource(requestContext, enrichedContext);
 
-    const response = getAIResponse(message.trim(), enrichedContext);
-    res.status(200).json({ ...response, contextSource });
+    let response;
+    try {
+      response = await callLLM({
+        message: message.trim(),
+        context: enrichedContext,
+        history,
+      });
+    } catch (llmError) {
+      const status = Number(llmError?.llmStatus || 0);
+      const detail = String(llmError?.message || "").toLowerCase();
+      const isQuotaOrProviderIssue =
+        status === 401 ||
+        status === 402 ||
+        status === 403 ||
+        status === 429 ||
+        detail.includes("quota") ||
+        detail.includes("billing") ||
+        detail.includes("rate limit") ||
+        detail.includes("insufficient_quota") ||
+        detail.includes("api key") ||
+        detail.includes("fetch failed") ||
+        detail.includes("aborted");
+
+      if (!isQuotaOrProviderIssue) {
+        throw llmError;
+      }
+
+      console.warn(
+        "AI provider unavailable, serving fallback reply:",
+        llmError.message,
+      );
+      response = {
+        reply: buildFallbackReply(message, enrichedContext),
+        provider: "fallback",
+        model: null,
+      };
+    }
+
+    res.status(200).json({
+      reply: response.reply,
+      provider: response.provider,
+      model: response.model,
+      style: response.style,
+      temperature: response.temperature,
+      contextSource,
+    });
   } catch (error) {
     console.error("AI chat error:", error);
     res.status(500).json({ message: "Failed to generate response." });
