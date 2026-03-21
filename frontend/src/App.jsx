@@ -3,8 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import MainLayout from "./layouts/MainLayout";
-import DashboardLayout from "./layouts/DashboardLayout";
-import SidebarLayout from "./layouts/SidebarLayout";
+import Layout from "./layouts/Layout";
 import "./App.css";
 
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -39,17 +38,7 @@ function App() {
           <Route
             element={
               <ProtectedRoute>
-                <SidebarLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/leaderboard" element={<LeaderboardPage />} />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
+                <Layout />
               </ProtectedRoute>
             }
           >
@@ -60,6 +49,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/ai-advisor" element={<AIAdvisorPage />} />
             <Route path="/reduction-simulator" element={<SimulatorPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
           </Route>
         </Routes>
       </Suspense>
